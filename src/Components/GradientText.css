@@ -1,0 +1,103 @@
+.animated-gradient-text {
+  position: relative;
+  margin: 0 auto;
+  display: flex;
+  max-width: fit-content;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1.25rem;
+  /* 20px */
+  backdrop-filter: blur(10px);
+  font-weight: 700;
+  font-size: 2.5rem;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  background-clip: text;
+  text-shadow: 0 2px 10px rgba(72, 209, 204, 0.4);
+}
+
+.gradient-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    45deg,
+    #004d4d,
+    #006666,
+    #008080,
+    #00a0a0,
+    #26cccc,
+    #48d1cc,
+    #7fdfdf,
+    #48d1cc,
+    #26cccc,
+    #00a0a0,
+    #008080,
+    #006666,
+    #004d4d
+  );
+  background-size: 300% 100%;
+  animation: gradient 4s linear infinite;
+  border-radius: inherit;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.gradient-overlay::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: inherit;
+  width: calc(100% - 2px);
+  height: calc(100% - 2px);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, #0d4f4f 0%, #1a6b6b 30%, #2d8080 70%, #4a9999 100%);
+  z-index: -1;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.text-content {
+  display: inline-block;
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(
+    45deg,
+    #004d4d,
+    #006666,
+    #008080,
+    #00a0a0,
+    #26cccc,
+    #48d1cc,
+    #7fdfdf,
+    #48d1cc,
+    #26cccc,
+    #00a0a0,
+    #008080,
+    #006666,
+    #004d4d
+  );
+  background-size: 300% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: gradient 4s linear infinite;
+}
