@@ -11,6 +11,7 @@ import {
   Ban,             // For Bill Cancellation - ban/prohibition symbol
   Menu,            // For mobile toggle
   X,               // For close button
+  LogOut  ,
   EllipsisVertical // For collapse button
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom';
@@ -31,6 +32,27 @@ const LayoutContainer = styled.div`
   min-height: 100vh;
   position: relative;
   background: ${colors.backgrounds.main};
+`;
+const SidebarFooter = styled.div`
+  padding: 12px 8px 20px 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  margin-top: auto;
+`;
+
+const LogoutItem = styled.div`
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin: 2px 8px;
+  border-radius: 12px;
+
+  &:hover {
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.2) 0%, rgba(220, 53, 69, 0.3) 100%);
+    transform: translateX(4px);
+    box-shadow: 0 4px 16px rgba(220, 53, 69, 0.2);
+  }
 `;
 
 // Mobile Toggle Button
@@ -88,6 +110,8 @@ const SidebarContainer = styled.aside`
   background: ${colors.gradients.secondary};
   color: white;
   z-index: 999;
+  display: flex;
+  flex-direction: column;
   transform: translateX(${props => (props.isOpen ? '0' : '-100%')});
   transition: transform 0.3s ease-in-out;
   box-shadow: ${props => (props.isOpen ? '4px 0 20px rgba(13, 51, 51, 0.4)' : 'none')};
@@ -388,7 +412,24 @@ const SidebarLayout = ({ children }) => {
             </NavItem>
           ))}
         </SidebarNav>
+    
+
+        <SidebarFooter>
+          <LogoutItem
+            onClick={() => {
+              window.location.href = "/secure";
+            }}
+          >
+            <NavIcon isCollapsed={isDesktopCollapsed}>
+              <LogOut size={20} />
+            </NavIcon>
+            <NavText isCollapsed={isDesktopCollapsed}>
+              Logout
+            </NavText>
+          </LogoutItem>
+        </SidebarFooter>
       </SidebarContainer>
+   
 
       {/* Main Content Area */}
       <MainContent isCollapsed={isDesktopCollapsed}>
