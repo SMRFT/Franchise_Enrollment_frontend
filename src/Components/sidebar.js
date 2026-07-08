@@ -325,6 +325,12 @@ const SidebarLayout = ({ children }) => {
       icon: Ban,
       label: 'Bill Cancellation' 
     },
+
+     { 
+      name: 'MonthEndCalculation', 
+      icon: Ban,
+      label: 'MonthEndCalculation' 
+    },
   ];
 
   const pathMap = {
@@ -335,6 +341,7 @@ const SidebarLayout = ({ children }) => {
     Barcodestock:'/Barcodestock',
     Billcancel:'/Cancelledbill',
     Billcancellation:'/FinalBillcancel',
+    MonthEndCalculation:'/MonthEndCalculation',
   };
 
   return (

@@ -1,12 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 import axios from "axios"
 import styled from "styled-components"
 
 // ================= Enhanced Styled Components =================
 const Container = styled.div`
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 20px auto;
   padding: 20px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -64,175 +65,74 @@ const StatCard = styled.div`
   }
 `
 
-const PatientGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 25px;
-  
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`
-
-const PatientCard = styled.div`
-  background: rgba(255,255,255,0.95);
-  border-radius: 20px;
-  padding: 25px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-  transition: all 0.3s ease;
-  border: 1px solid rgba(255,255,255,0.3);
-  position: relative;
+const TableWrapper = styled.div`
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 18px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   overflow: hidden;
-  backdrop-filter: blur(10px);
-  
+  border: 1px solid rgba(255, 255, 255, 0.3);
+`
+
+const TableScroll = styled.div`
+  overflow-x: auto;
+`
+
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1000px;
+`
+
+const Thead = styled.thead`
+  background: linear-gradient(90deg, #006666 0%, #00a0a0 100%);
+`
+
+const Th = styled.th`
+  text-align: left;
+  padding: 1rem 1.25rem;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+`
+
+const Tr = styled.tr`
+  transition: background 0.15s ease;
+
   &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+    background: rgba(38, 204, 204, 0.08);
   }
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #006666, #26cccc);
+
+  &:not(:last-child) {
+    border-bottom: 1px solid #eef1f1;
   }
 `
 
-const PatientHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 2px solid #ecf0f1;
-  
-  .patient-id {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: #006666;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  
-  .patient-icon {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, #006666, #26cccc);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    font-size: 1.2rem;
-  }
+const Td = styled.td`
+  padding: 0.9rem 1.25rem;
+  font-size: 0.92rem;
+  color: #333;
+  vertical-align: middle;
 `
 
-const InfoGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 15px;
-  margin-bottom: 20px;
-`
-
-const InfoItem = styled.div`
-  background: #f8f9fa;
-  padding: 12px 15px;
-  border-radius: 10px;
-  border-left: 4px solid #006666;
-  
-  .label {
-    font-size: 0.8rem;
-    color: #7f8c8d;
-    text-transform: uppercase;
-    font-weight: 600;
-    margin-bottom: 5px;
-  }
-  
-  .value {
-    font-size: 1rem;
-    color: #2c3e50;
-    font-weight: 500;
-  }
-`
-
-const SectionTitle = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 25px 0 15px 0;
-  font-size: 1.2rem;
+const TestNameCell = styled(Td)`
   font-weight: 600;
   color: #006666;
-  
-  .icon {
-    width: 35px;
-    height: 35px;
-    background: linear-gradient(135deg, #006666, #26cccc);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1rem;
-  }
 `
 
-const TestCard = styled.div`
-  background: linear-gradient(135deg, #006666 0%, #00a0a0 50%, #26cccc 100%);
-  border-radius: 15px;
-  padding: 20px;
-  margin: 15px 0;
-  color: white;
-  position: relative;
-  overflow: hidden;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 100px;
-    height: 100px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 50%;
-  }
-`
-
-const TestHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 15px;
-  
-  .test-name {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 5px;
-  }
-  
-  .test-price {
-    background: rgba(255,255,255,0.2);
-    padding: 8px 12px;
-    border-radius: 20px;
-    font-weight: bold;
-    font-size: 1.1rem;
-  }
-`
-
-const StatusBadge = styled.div`
+const StatusBadge = styled.span`
   display: inline-block;
   padding: 6px 12px;
   border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
   background: ${props => {
-    switch(props.status) {
+    switch (props.status) {
       case 'Cancel Requested': return '#f39c12';
       case 'Cancel Accepted': return '#3498db';
       case 'Cancel Approved': return '#27ae60';
@@ -241,47 +141,52 @@ const StatusBadge = styled.div`
     }
   }};
   color: white;
-  margin-bottom: 10px;
+`
+
+const MRPTag = styled.span`
+  font-weight: 700;
+  color: #006666;
+  background: rgba(0, 102, 102, 0.08);
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  white-space: nowrap;
 `
 
 const DateInfo = styled.div`
-  font-size: 0.85rem;
-  opacity: 0.9;
-  margin: 8px 0;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  
-  .date-icon {
-    width: 16px;
-    height: 16px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-  }
+  font-size: 0.78rem;
+  color: #666;
+  margin-top: 0.35rem;
+  white-space: nowrap;
 `
 
 const ActionButtons = styled.div`
   display: flex;
-  gap: 10px;
-  margin-top: 15px;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 `
 
 const ActionButton = styled.button`
-  flex: 1;
   border: none;
-  padding: 12px 20px;
-  border-radius: 25px;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   cursor: pointer;
   transition: all 0.3s ease;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
   
+  &.view {
+    background: #006666;
+    color: white;
+
+    &:hover {
+      background: #004d4d;
+      transform: translateY(-1px);
+    }
+  }
+
   &.approve {
     background: linear-gradient(135deg, #27ae60, #2ecc71);
     color: white;
@@ -309,6 +214,12 @@ const ActionButton = styled.button`
     cursor: not-allowed;
     transform: none;
   }
+`
+
+const NoActionLabel = styled.span`
+  color: #aaa;
+  font-size: 0.8rem;
+  font-style: italic;
 `
 
 const EmptyState = styled.div`
@@ -349,11 +260,110 @@ const LoadingSpinner = styled.div`
   }
 `
 
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 20, 20, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1.5rem;
+`
+
+const ModalCard = styled.div`
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+`
+
+const ModalHeader = styled.div`
+  background: linear-gradient(90deg, #006666 0%, #00a0a0 100%);
+  padding: 1.25rem 1.5rem;
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+`
+
+const ModalHeaderText = styled.div`
+  color: white;
+`
+
+const ModalPatientId = styled.div`
+  font-size: 1.1rem;
+  font-weight: 700;
+`
+
+const ModalSubline = styled.div`
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 0.25rem;
+`
+
+const ModalCloseButton = styled.button`
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.35);
+  }
+`
+
+const ModalBody = styled.div`
+  padding: 1.25rem 1.5rem 1.5rem;
+`
+
+const ModalTotalLine = styled.div`
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 1rem;
+
+  strong {
+    color: #006666;
+  }
+`
+
+const ModalTestList = styled.ol`
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+`
+
+const ModalTestItem = styled.li`
+  font-size: 0.92rem;
+  color: #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+`
+
+const ModalTestName = styled.span`
+  font-weight: 600;
+  color: #006666;
+`
+
 // ================= Enhanced Component =================
 const FinalApprovalcancaltest = () => {
   const [cancelAccepted, setCancelAccepted] = useState([])
   const [loading, setLoading] = useState(true)
   const [processingActions, setProcessingActions] = useState(new Set())
+  const [viewPatient, setViewPatient] = useState(null)
   const franchiseurl = process.env.REACT_APP_BACKEND_FRANCHISE_BASE_URL
 
   useEffect(() => {
@@ -488,88 +498,117 @@ const FinalApprovalcancaltest = () => {
           <div className="message">No cancellation requests found</div>
         </EmptyState>
       ) : (
-        <PatientGrid>
-          {cancelAccepted.map((patient, idx) => (
-            <PatientCard key={idx}>
-              <PatientHeader>
-                <div className="patient-id">
-                  <div className="patient-icon">P</div>
-                  Patient ID: {patient.patient_id}
-                </div>
-              </PatientHeader>
+        <TableWrapper>
+          <TableScroll>
+            <Table>
+              <Thead>
+                <tr>
+                  <Th>Patient ID</Th>
+                  <Th>Barcode</Th>
+                  <Th>Franchise</Th>
+                  <Th>Referred Doctor</Th>
+                  <Th>Test Name</Th>
+                  <Th>Status</Th>
+                  <Th>MRP</Th>
+                  <Th>Actions</Th>
+                </tr>
+              </Thead>
+              <tbody>
+                {cancelAccepted.map((patient, idx) =>
+                  patient.cancel_requested_tests.map((test, tIdx) => {
+                    const actionKey = `${patient.patient_id}-${test.test_id}`
+                    const isProcessing = processingActions.has(actionKey)
+                    const showActions = test.status === "Cancel Requested" || test.status === "Cancel Accepted"
 
-              <InfoGrid>
-                <InfoItem>
-                  <div className="label">Barcode</div>
-                  <div className="value">{patient.barcode}</div>
-                </InfoItem>
-                <InfoItem>
-                  <div className="label">Franchise</div>
-                  <div className="value">{patient.franchise_id}</div>
-                </InfoItem>
-                <InfoItem>
-                  <div className="label">Referred Doctor</div>
-                  <div className="value">{patient.referredDoctor}</div>
-                </InfoItem>
-                <InfoItem>
-                  <div className="label">Total Tests</div>
-                  <div className="value">{patient.cancel_requested_tests.length}</div>
-                </InfoItem>
-              </InfoGrid>
-
-              <SectionTitle>
-                <div className="icon">🧪</div>
-                Cancellation Requests
-              </SectionTitle>
-
-              {patient.cancel_requested_tests.map((test, tIdx) => (
-                <TestCard key={tIdx}>
-                  <TestHeader>
-                    <div>
-                      <div className="test-name">{test.test_name}</div>
-                      <StatusBadge status={test.status}>{test.status}</StatusBadge>
-                    </div>
-                    <div className="test-price">₹{test.MRP}</div>
-                  </TestHeader>
-
-                  {test.cancel_approved_date && (
-                    <DateInfo>
-                      <div className="date-icon">✅</div>
-                      Approved: {new Date(test.cancel_approved_date).toLocaleDateString()}
-                    </DateInfo>
-                  )}
-                  
-                  {test.rejected_date && (
-                    <DateInfo>
-                      <div className="date-icon">❌</div>
-                      Rejected: {new Date(test.rejected_date).toLocaleDateString()}
-                    </DateInfo>
-                  )}
-
-                  {(test.status === "Cancel Requested" || test.status === "Cancel Accepted") && (
-                    <ActionButtons>
-                      <ActionButton 
-                        className="approve"
-                        onClick={() => handleAction(patient.patient_id, test.test_id, "approve")}
-                        disabled={processingActions.has(`${patient.patient_id}-${test.test_id}`)}
-                      >
-                        {processingActions.has(`${patient.patient_id}-${test.test_id}`) ? "Processing..." : "Approve"}
-                      </ActionButton>
-                      <ActionButton 
-                        className="reject"
-                        onClick={() => handleAction(patient.patient_id, test.test_id, "reject")}
-                        disabled={processingActions.has(`${patient.patient_id}-${test.test_id}`)}
-                      >
-                        {processingActions.has(`${patient.patient_id}-${test.test_id}`) ? "Processing..." : "Reject"}
-                      </ActionButton>
-                    </ActionButtons>
-                  )}
-                </TestCard>
-              ))}
-            </PatientCard>
-          ))}
-        </PatientGrid>
+                    return (
+                      <Tr key={`${idx}_${tIdx}`}>
+                        <Td>{patient.patient_id}</Td>
+                        <Td>{patient.barcode}</Td>
+                        <Td>{patient.franchise_id}</Td>
+                        <Td>{patient.referredDoctor}</Td>
+                        <TestNameCell>{test.test_name}</TestNameCell>
+                        <Td>
+                          <StatusBadge status={test.status}>{test.status}</StatusBadge>
+                          {test.cancel_approved_date && (
+                            <DateInfo>✅ {new Date(test.cancel_approved_date).toLocaleDateString()}</DateInfo>
+                          )}
+                          {test.rejected_date && (
+                            <DateInfo>❌ {new Date(test.rejected_date).toLocaleDateString()}</DateInfo>
+                          )}
+                        </Td>
+                        <Td>
+                          <MRPTag>₹{test.MRP}</MRPTag>
+                        </Td>
+                        <Td>
+                          <ActionButtons>
+                            <ActionButton
+                              className="view"
+                              onClick={() => setViewPatient(patient)}
+                            >
+                              View
+                            </ActionButton>
+                            {showActions ? (
+                              <>
+                                <ActionButton
+                                  className="approve"
+                                  onClick={() => handleAction(patient.patient_id, test.test_id, "approve")}
+                                  disabled={isProcessing}
+                                >
+                                  {isProcessing ? "Processing..." : "Approve"}
+                                </ActionButton>
+                                <ActionButton
+                                  className="reject"
+                                  onClick={() => handleAction(patient.patient_id, test.test_id, "reject")}
+                                  disabled={isProcessing}
+                                >
+                                  {isProcessing ? "Processing..." : "Reject"}
+                                </ActionButton>
+                              </>
+                            ) : (
+                              <NoActionLabel>—</NoActionLabel>
+                            )}
+                          </ActionButtons>
+                        </Td>
+                      </Tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </Table>
+          </TableScroll>
+        </TableWrapper>
       )}
+
+      {viewPatient &&
+        createPortal(
+          <ModalOverlay onClick={() => setViewPatient(null)}>
+            <ModalCard onClick={(e) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalHeaderText>
+                  <ModalPatientId>Patient ID: {viewPatient.patient_id}</ModalPatientId>
+                  <ModalSubline>
+                    Barcode: {viewPatient.barcode} &nbsp;•&nbsp; Franchise: {viewPatient.franchise_id}
+                  </ModalSubline>
+                </ModalHeaderText>
+                <ModalCloseButton onClick={() => setViewPatient(null)}>✕</ModalCloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <ModalTotalLine>
+                  Total Tests: <strong>{viewPatient.cancel_requested_tests?.length || 0}</strong>
+                </ModalTotalLine>
+                <ModalTestList>
+                  {viewPatient.cancel_requested_tests?.map((test, i) => (
+                    <ModalTestItem key={i}>
+                      <ModalTestName>{test.test_name}</ModalTestName>
+                      <StatusBadge status={test.status}>{test.status}</StatusBadge>
+                    </ModalTestItem>
+                  ))}
+                </ModalTestList>
+              </ModalBody>
+            </ModalCard>
+          </ModalOverlay>,
+          document.body
+        )}
     </Container>
   )
 }

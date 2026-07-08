@@ -146,6 +146,15 @@ const SearchSection = styled.div`
   animation-fill-mode: both;
 `;
 
+const DirectoryHeader = styled.div`
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  text-align: center;
+`;
+
 const SearchInput = styled.input`
   border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 12px;
@@ -815,14 +824,16 @@ const EmployeeList = () => {
         <ContentWrapper>
           <GlobalContainer>
             <ListContainer>
-              <GradientText
-                colors={["#004d4d", "#008080", "#26cccc", "#48d1cc", "#7fdfdf", "#26cccc", "#008080"]}
-                animationSpeed={4}
-                showBorder={false}
-                className="custom-class"
-              >
-                Employee Directory
-              </GradientText>
+              <DirectoryHeader>
+                <GradientText
+                  colors={["#004d4d", "#008080", "#26cccc", "#48d1cc", "#7fdfdf", "#26cccc", "#008080"]}
+                  animationSpeed={4}
+                  showBorder={false}
+                  className="custom-class"
+                >
+                  Employee Directory
+                </GradientText>
+              </DirectoryHeader>
 
               <StatsSection>
                 <StatCard>

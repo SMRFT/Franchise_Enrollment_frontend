@@ -27,7 +27,7 @@ const CardText = styled.p`
 const ResendButton = styled.button`
   margin-top: 1rem;
   margin-right: 0.5rem;
-  background-color: ${(props) => (props.expired ? "#dc3545" : "#0d6efd")};
+  background-color: ${(props) => (props.expired ? "#dc3545" : "#256565")};
   color: white;
   border: none;
   padding: 0.5rem 1rem;
@@ -36,7 +36,7 @@ const ResendButton = styled.button`
   font-size: 0.9rem;
 
   &:hover {
-    background-color: ${(props) => (props.expired ? "#c82333" : "#0b5ed7")};
+    background-color: ${(props) => (props.expired ? "#c82333" : "#1a4a4a")};
   }
 
   &:disabled {
@@ -153,7 +153,12 @@ const InactiveFranchises = () => {
     <div className="container mt-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>Inactive Franchises ({franchises.length})</h2>
-        <button className="btn btn-outline-primary" onClick={fetchInactiveFranchises} disabled={loading}>
+        <button
+          className="btn btn-outline-primary"
+          style={{ color: "#256565", borderColor: "#256565" }}
+          onClick={fetchInactiveFranchises}
+          disabled={loading}
+        >
           {loading ? "Refreshing..." : "Refresh"}
         </button>
       </div>
@@ -173,6 +178,7 @@ const InactiveFranchises = () => {
             </div>
             <button
               className="btn btn-warning"
+              style={{ backgroundColor: "#256565", borderColor: "#256565", color: "white" }}
               onClick={handleBulkResend}
               disabled={selectedFranchises.length === 0 || bulkLoading}
             >

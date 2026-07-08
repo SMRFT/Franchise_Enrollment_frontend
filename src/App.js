@@ -12,6 +12,7 @@ import Barcodestock from './Components/Barcodestock';
 import Cancelledbill from './Components/Cancelledbill';
 import InactiveFranchises from './Components/InactiveFranchises';
 import FinalBillcancel from './Components/FinalbillCancel';
+import MonthEndCalculation from './Components/MonthEndCalculation';
 
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
              <Route path="/InactiveFranchises" element={<InactiveFranchises/>} />
              <Route path="/Cancelledbill" element={<Cancelledbill/>} />
               <Route path="/FinalBillcancel" element={<FinalBillcancel/>} />
+               <Route path="/MonthEndCalculation" element={<MonthEndCalculation/>} />
         </Routes>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import styled from "styled-components";
 
@@ -12,7 +13,7 @@ const Container = styled.div`
 
 const Header = styled.div`
   text-align: center;
-  margin-bottom: 3rem;
+  margin-bottom: 2.5rem;
 `;
 
 const Title = styled.h1`
@@ -31,197 +32,249 @@ const Subtitle = styled.p`
   font-weight: 300;
 `;
 
-const TestsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-  gap: 1.5rem;
-  max-width: 1400px;
+const TableWrapper = styled.div`
+  max-width: 1500px;
   margin: 0 auto;
-`;
-
-const TestCard = styled.div`
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.3s ease;
-  
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-  }
 `;
 
-const CardHeader = styled.div`
-  display: flex;
-  justify-content: between;
-  align-items: center;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #f0f0f0;
+const TableScroll = styled.div`
+  overflow-x: auto;
 `;
 
-const PatientId = styled.h3`
-  color: #006666;
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 600;
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 960px;
 `;
 
-const InfoGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+const Thead = styled.thead`
+  background: linear-gradient(90deg, #006666 0%, #00a0a0 100%);
 `;
 
-const InfoItem = styled.div`
-  display: flex;
-  flex-direction: column;
-`;
-
-const InfoLabel = styled.span`
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #666;
+const Th = styled.th`
+  text-align: left;
+  padding: 1rem 1.25rem;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 0.25rem;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
 `;
 
-const InfoValue = styled.span`
-  font-size: 1rem;
-  color: #333;
-  font-weight: 500;
-`;
+const Tr = styled.tr`
+  transition: background 0.15s ease;
 
-const TestsSection = styled.div`
-  margin-top: 1.5rem;
-`;
-
-const TestsSectionTitle = styled.h4`
-  color: #006666;
-  margin: 0 0 1rem 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const TestsList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-`;
-
-const TestItem = styled.div`
-  background: linear-gradient(90deg, rgba(0, 102, 102, 0.1) 0%, rgba(38, 204, 204, 0.1) 100%);
-  border-left: 4px solid #00a0a0;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  
   &:hover {
-    background: linear-gradient(90deg, rgba(0, 102, 102, 0.15) 0%, rgba(38, 204, 204, 0.15) 100%);
-    transform: translateX(5px);
+    background: rgba(38, 204, 204, 0.08);
+  }
+
+  &:not(:last-child) {
+    border-bottom: 1px solid #eef1f1;
   }
 `;
 
-const TestName = styled.span`
+const Td = styled.td`
+  padding: 0.9rem 1.25rem;
+  font-size: 0.92rem;
+  color: #333;
+  vertical-align: middle;
+`;
+
+const TestNameCell = styled(Td)`
   font-weight: 600;
   color: #006666;
-  display: block;
-  margin-bottom: 0.25rem;
 `;
 
-const TestDetails = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.9rem;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-`;
-
-const TestInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-`;
-
-const TestStatus = styled.span`
-  background: ${props => 
-    props.status === 'Cancel Accepted' ? '#ff4757' : 
-    props.status === 'Cancel Requested' ? '#ffa502' : 
-    props.status === 'cancelled' ? '#ff4757' : 
+const StatusBadge = styled.span`
+  background: ${props =>
+    props.status === 'Cancel Accepted' ? '#ff4757' :
+    props.status === 'Cancel Requested' ? '#ffa502' :
+    props.status === 'cancelled' ? '#ff4757' :
     props.status === 'pending' ? '#ffa502' : '#26cccc'
   };
   color: white;
-  padding: 0.25rem 0.75rem;
+  padding: 0.3rem 0.8rem;
   border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 `;
 
-const TestMRP = styled.span`
-  font-weight: 600;
+const MRPTag = styled.span`
+  font-weight: 700;
   color: #006666;
-  background: rgba(0, 102, 102, 0.1);
-  padding: 0.25rem 0.5rem;
+  background: rgba(0, 102, 102, 0.08);
+  padding: 0.3rem 0.6rem;
   border-radius: 6px;
+  white-space: nowrap;
 `;
 
 const ActionButtons = styled.div`
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.5rem;
 `;
 
 const ActionButton = styled.button`
-  padding: 0.5rem 1rem;
+  padding: 0.45rem 0.9rem;
   border: none;
   border-radius: 6px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.75rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   cursor: pointer;
   transition: all 0.2s ease;
-  
-  ${props => props.variant === 'approve' ? `
+  white-space: nowrap;
+
+  ${props => props.$variant === 'approve' ? `
     background: #27ae60;
     color: white;
-    
+
     &:hover {
       background: #229954;
       transform: translateY(-1px);
     }
-    
+
     &:disabled {
       background: #95a5a6;
       cursor: not-allowed;
       transform: none;
     }
+  ` : props.$variant === 'view' ? `
+    background: #006666;
+    color: white;
+
+    &:hover {
+      background: #004d4d;
+      transform: translateY(-1px);
+    }
   ` : `
     background: #e74c3c;
     color: white;
-    
+
     &:hover {
       background: #c0392b;
       transform: translateY(-1px);
     }
-    
+
     &:disabled {
       background: #95a5a6;
       cursor: not-allowed;
       transform: none;
     }
   `}
+`;
+
+const NoActionLabel = styled.span`
+  color: #aaa;
+  font-size: 0.8rem;
+  font-style: italic;
+`;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 20, 20, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1.5rem;
+`;
+
+const ModalCard = styled.div`
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+`;
+
+const ModalHeader = styled.div`
+  background: linear-gradient(90deg, #006666 0%, #00a0a0 100%);
+  padding: 1.25rem 1.5rem;
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+`;
+
+const ModalHeaderText = styled.div`
+  color: white;
+`;
+
+const ModalPatientId = styled.div`
+  font-size: 1.1rem;
+  font-weight: 700;
+`;
+
+const ModalSubline = styled.div`
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 0.25rem;
+`;
+
+const ModalCloseButton = styled.button`
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.35);
+  }
+`;
+
+const ModalBody = styled.div`
+  padding: 1.25rem 1.5rem 1.5rem;
+`;
+
+const ModalTotalLine = styled.div`
+  font-size: 0.85rem;
+  color: #666;
+  margin-bottom: 1rem;
+
+  strong {
+    color: #006666;
+  }
+`;
+
+const ModalTestList = styled.ol`
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+`;
+
+const ModalTestItem = styled.li`
+  font-size: 0.92rem;
+  color: #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+`;
+
+const ModalTestName = styled.span`
+  font-weight: 600;
+  color: #006666;
 `;
 
 const EmptyState = styled.div`
@@ -251,7 +304,7 @@ const LoadingSpinner = styled.div`
   justify-content: center;
   align-items: center;
   height: 200px;
-  
+
   &::after {
     content: '';
     width: 40px;
@@ -261,7 +314,7 @@ const LoadingSpinner = styled.div`
     border-radius: 50%;
     animation: spin 1s ease-in-out infinite;
   }
-  
+
   @keyframes spin {
     to {
       transform: rotate(360deg);
@@ -273,6 +326,7 @@ const CancelRequestedTests = () => {
   const [tests, setTests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processingTests, setProcessingTests] = useState(new Set());
+  const [viewItem, setViewItem] = useState(null);
   const franchiseurl = process.env.REACT_APP_BACKEND_FRANCHISE_BASE_URL;
 
   useEffect(() => {
@@ -308,7 +362,7 @@ const CancelRequestedTests = () => {
       if (response.status === 200) {
         // Refresh the tests data
         fetchTests();
-        
+
         // Show success message (you can replace with a proper toast notification)
         alert(`Test ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
       }
@@ -345,78 +399,111 @@ const CancelRequestedTests = () => {
           <EmptyStateText>No cancel requested tests found.</EmptyStateText>
         </EmptyState>
       ) : (
-        <TestsGrid>
-          {tests.map((item, idx) => (
-            <TestCard key={idx}>
-              <CardHeader>
-                <PatientId>Patient ID: {item.patient_id}</PatientId>
-              </CardHeader>
-
-              <InfoGrid>
-                <InfoItem>
-                  <InfoLabel>Barcode</InfoLabel>
-                  <InfoValue>{item.barcode}</InfoValue>
-                </InfoItem>
-                <InfoItem>
-                  <InfoLabel>Franchise</InfoLabel>
-                  <InfoValue>{item.franchise_id}</InfoValue>
-                </InfoItem>
-                <InfoItem>
-                  <InfoLabel>Referred Doctor</InfoLabel>
-                  <InfoValue>{item.referredDoctor}</InfoValue>
-                </InfoItem>
-                <InfoItem>
-                  <InfoLabel>Total Tests</InfoLabel>
-                  <InfoValue>{item.cancel_requested_tests?.length || 0}</InfoValue>
-                </InfoItem>
-              </InfoGrid>
-
-              <TestsSection>
-                <TestsSectionTitle>
-                  📋 Requested Cancellations
-                </TestsSectionTitle>
-                <TestsList>
-                  {item.cancel_requested_tests?.map((test, i) => {
+        <TableWrapper>
+          <TableScroll>
+            <Table>
+              <Thead>
+                <tr>
+                  <Th>Patient ID</Th>
+                  <Th>Barcode</Th>
+                  <Th>Franchise</Th>
+                  <Th>Referred Doctor</Th>
+                  {/* <Th>Test Name</Th> */}
+                  <Th>Status</Th>
+                  <Th>MRP</Th>
+                  <Th>Actions</Th>
+                </tr>
+              </Thead>
+              <tbody>
+                {tests.map((item, idx) =>
+                  item.cancel_requested_tests?.map((test, i) => {
                     const testKey = `${item.patient_id}_${item.barcode}_${test.test_name}`;
                     const isProcessing = processingTests.has(testKey);
                     const showActions = test.status === 'Cancel Requested';
-                    
+
                     return (
-                      <TestItem key={i}>
-                        <TestName>{test.test_name}</TestName>
-                        <TestDetails>
-                          <TestInfo>
-                            <TestStatus status={test.status}>{test.status}</TestStatus>
-                            <TestMRP>₹{test.MRP}</TestMRP>
-                          </TestInfo>
-                          {showActions && (
-                            <ActionButtons>
-                              <ActionButton
-                                variant="approve"
-                                disabled={isProcessing}
-                                onClick={() => handleTestAction(item.patient_id, item.barcode, test.test_name, 'approve')}
-                              >
-                                {isProcessing ? '...' : 'Approve'}
-                              </ActionButton>
-                              <ActionButton
-                                variant="reject"
-                                disabled={isProcessing}
-                                onClick={() => handleTestAction(item.patient_id, item.barcode, test.test_name, 'reject')}
-                              >
-                                {isProcessing ? '...' : 'Reject'}
-                              </ActionButton>
-                            </ActionButtons>
-                          )}
-                        </TestDetails>
-                      </TestItem>
+                      <Tr key={`${idx}_${i}`}>
+                        <Td>{item.patient_id}</Td>
+                        <Td>{item.barcode}</Td>
+                        <Td>{item.franchise_id}</Td>
+                        <Td>{item.referredDoctor}</Td>
+                        {/* <TestNameCell>{test.test_name}</TestNameCell> */}
+                        <Td>
+                          <StatusBadge status={test.status}>{test.status}</StatusBadge>
+                        </Td>
+                        <Td>
+                          <MRPTag>₹{test.MRP}</MRPTag>
+                        </Td>
+                        <Td>
+                          <ActionButtons>
+                            <ActionButton
+                              $variant="view"
+                              onClick={() => setViewItem(item)}
+                            >
+                              View
+                            </ActionButton>
+                            {showActions ? (
+                              <>
+                                <ActionButton
+                                  $variant="approve"
+                                  disabled={isProcessing}
+                                  onClick={() => handleTestAction(item.patient_id, item.barcode, test.test_name, 'approve')}
+                                >
+                                  {isProcessing ? '...' : 'Approve'}
+                                </ActionButton>
+                                <ActionButton
+                                  $variant="reject"
+                                  disabled={isProcessing}
+                                  onClick={() => handleTestAction(item.patient_id, item.barcode, test.test_name, 'reject')}
+                                >
+                                  {isProcessing ? '...' : 'Reject'}
+                                </ActionButton>
+                              </>
+                            ) : (
+                              <NoActionLabel>—</NoActionLabel>
+                            )}
+                          </ActionButtons>
+                        </Td>
+                      </Tr>
                     );
-                  })}
-                </TestsList>
-              </TestsSection>
-            </TestCard>
-          ))}
-        </TestsGrid>
+                  })
+                )}
+              </tbody>
+            </Table>
+          </TableScroll>
+        </TableWrapper>
       )}
+
+      {viewItem &&
+        createPortal(
+          <ModalOverlay onClick={() => setViewItem(null)}>
+            <ModalCard onClick={(e) => e.stopPropagation()}>
+              <ModalHeader>
+                <ModalHeaderText>
+                  <ModalPatientId>Patient ID: {viewItem.patient_id}</ModalPatientId>
+                  <ModalSubline>
+                    Barcode: {viewItem.barcode} &nbsp;•&nbsp; Franchise: {viewItem.franchise_id}
+                  </ModalSubline>
+                </ModalHeaderText>
+                <ModalCloseButton onClick={() => setViewItem(null)}>✕</ModalCloseButton>
+              </ModalHeader>
+              <ModalBody>
+                <ModalTotalLine>
+                  Total Tests: <strong>{viewItem.cancel_requested_tests?.length || 0}</strong>
+                </ModalTotalLine>
+                <ModalTestList>
+                  {viewItem.cancel_requested_tests?.map((test, i) => (
+                    <ModalTestItem key={i}>
+                      <ModalTestName>{test.test_name}</ModalTestName>
+                      <StatusBadge status={test.status}>{test.status}</StatusBadge>
+                    </ModalTestItem>
+                  ))}
+                </ModalTestList>
+              </ModalBody>
+            </ModalCard>
+          </ModalOverlay>,
+          document.body
+        )}
     </Container>
   );
 };

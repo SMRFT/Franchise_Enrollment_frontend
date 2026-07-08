@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import styled from 'styled-components';
 import axios from "axios";
 import {
@@ -13,6 +14,11 @@ const FranchiseLocations = () => {
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formData, setFormData] = useState({ Cluster_Name: '', District: '' });
+  const [formError, setFormError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const franchiseurl = process.env.REACT_APP_BACKEND_FRANCHISE_BASE_URL;
 
@@ -62,9 +68,9 @@ const FranchiseLocations = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await apiRequest(`${franchiseurl}getlocations/`);
-      
+
       if (response.success) {
         setLocations(response.data);
       } else {
@@ -91,8 +97,8 @@ const FranchiseLocations = () => {
 
     try {
       const response = await apiRequest(
-        `${franchiseurl}updatestatus/${locationId}/`, 
-        'PATCH', 
+        `${franchiseurl}updatestatus/${locationId}/`,
+        'PATCH',
         { is_active: !currentStatus }
       );
 
@@ -103,7 +109,7 @@ const FranchiseLocations = () => {
         }));
       } else {
         let errorMessage = 'Failed to update status. Please try again.';
-        
+
         if (response.status === 401) {
           errorMessage = 'Session expired. Please log in again.';
         } else if (response.status === 400) {
@@ -113,12 +119,83 @@ const FranchiseLocations = () => {
         } else if (response.error) {
           errorMessage = response.error;
         }
-        
+
         alert(errorMessage);
       }
     } catch (err) {
       console.error('Error updating status:', err);
       alert('An unexpected error occurred while updating status. Please try again.');
+    }
+  };
+
+  const openAddModal = () => {
+    console.log("openAddModal called!");
+    setFormData({ Cluster_Name: '', District: '' });
+    setFormError(null);
+    setShowAddModal(true);
+  };
+
+  const closeAddModal = () => {
+    console.log("closeAddModal called!");
+    if (submitting) return;
+    setShowAddModal(false);
+  };
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddLocation = async (e) => {
+    e.preventDefault();
+
+    if (!formData.Cluster_Name.trim() || !formData.District.trim()) {
+      setFormError('Cluster Name and District are required.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setFormError(null);
+
+      const response = await apiRequest(
+        `${franchiseurl}post_loaction/`,
+        'POST',
+        {
+          Cluster_Name: formData.Cluster_Name.trim(),
+          District: formData.District.trim(),
+          is_active: true,
+        }
+      );
+
+      if (response.success) {
+        // Backend response includes the auto-generated location_id,
+        // created_by (derived server-side from the auth token), etc.
+        if (response.data && (response.data.location_id || response.data._id)) {
+          setLocations(prev => [...prev, response.data]);
+        } else {
+          await fetchLocations();
+        }
+        setShowAddModal(false);
+      } else {
+        if (response.status === 401) {
+          setFormError('Session expired. Please log in again.');
+        } else if (response.status === 400) {
+          setFormError(
+            (response.data && (response.data.error || response.data.message)) ||
+            'Invalid data sent to server.'
+          );
+        } else if (response.networkError) {
+          setFormError('Network error. Please check your internet connection.');
+        } else {
+          setFormError(response.error || 'Failed to add location. Please try again.');
+        }
+      }
+    } catch (err) {
+      console.error('Error adding location:', err);
+      setFormError('An unexpected error occurred. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -166,7 +243,13 @@ const FranchiseLocations = () => {
           <Title>Franchise Locations</Title>
           <Subtitle>Manage and monitor franchise locations across districts</Subtitle>
         </Header>
-        
+
+        <ActionBar>
+          <AddButton onClick={openAddModal}>
+            <span>+</span> Add Location
+          </AddButton>
+        </ActionBar>
+
         <ModernTableContainer>
           {locations.length === 0 ? (
             <EmptyState>
@@ -201,13 +284,18 @@ const FranchiseLocations = () => {
                     </TableCell>
                     <TableCell>
                       <StatusContainer>
-                        <Toggle>
-                          <ToggleSlider
-                            active={location.is_active}
-                            onClick={() => toggleStatus(location._id, location.is_active)}
+                        <ToggleWrapper>
+                          <ToggleInput
+                            type="checkbox"
+                            checked={location.is_active}
+                            onChange={() => toggleStatus(location._id, location.is_active)}
                           />
-                        </Toggle>
-                        <StatusBadge active={location.is_active}>
+                          <ToggleTrack $active={location.is_active}>
+                            <ToggleLabel $side="on" $active={location.is_active}>ON</ToggleLabel>
+                            <ToggleLabel $side="off" $active={location.is_active}>OFF</ToggleLabel>
+                          </ToggleTrack>
+                        </ToggleWrapper>
+                        <StatusBadge $active={location.is_active}>
                           {location.is_active ? 'Active' : 'Inactive'}
                         </StatusBadge>
                       </StatusContainer>
@@ -218,6 +306,71 @@ const FranchiseLocations = () => {
             </Table>
           )}
         </ModernTableContainer>
+
+        {console.log("Rendering FranchiseLocations, showAddModal is:", showAddModal)}
+       {showAddModal && typeof document !== "undefined" && createPortal(
+  <ModalOverlay
+    onClick={(e) => {
+      if (e.target === e.currentTarget) {
+        closeAddModal();
+      }
+    }}
+  >
+    <ModalCard onClick={(e) => e.stopPropagation()}>
+      <ModalHeader>
+        <ModalTitle>Add Franchise Location</ModalTitle>
+        <ModalCloseButton onClick={closeAddModal} disabled={submitting}>
+          ×
+        </ModalCloseButton>
+      </ModalHeader>
+
+      <form onSubmit={handleAddLocation}>
+        <FormGroup>
+          <Label>Location ID</Label>
+          <DisabledInput type="text" value="Auto-generated on save" disabled />
+        </FormGroup>
+
+        <FormGroup>
+          <Label htmlFor="Cluster_Name">Cluster Name</Label>
+          <Input
+            id="Cluster_Name"
+            name="Cluster_Name"
+            type="text"
+            value={formData.Cluster_Name}
+            onChange={handleFormChange}
+            placeholder="e.g. Attayampatti"
+            disabled={submitting}
+          />
+        </FormGroup>
+
+        <FormGroup>
+          <Label htmlFor="District">District</Label>
+          <Input
+            id="District"
+            name="District"
+            type="text"
+            value={formData.District}
+            onChange={handleFormChange}
+            placeholder="e.g. Salem"
+            disabled={submitting}
+          />
+        </FormGroup>
+
+        {formError && <FormErrorText>{formError}</FormErrorText>}
+
+        <ModalActions>
+          <SecondaryButton type="button" onClick={closeAddModal} disabled={submitting}>
+            Cancel
+          </SecondaryButton>
+          <PrimaryButton type="submit" disabled={submitting}>
+            {submitting ? 'Saving...' : 'Save Location'}
+          </PrimaryButton>
+        </ModalActions>
+      </form>
+    </ModalCard>
+  </ModalOverlay>,
+  document.body
+)}
       </PageContainer>
     </LiquidBackground>
   );
@@ -280,6 +433,188 @@ const Subtitle = styled.p`
   
   @media (max-width: 768px) {
     font-size: 1rem;
+  }
+`;
+
+const ActionBar = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+`;
+
+const AddButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border: none;
+  border-radius: 10px;
+  background: ${colors.gradients.accent};
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  span {
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 9999;
+`;
+
+const ModalCard = styled(GradientCard)`
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+`;
+
+const ModalTitle = styled.h2`
+  color: #ffffff;
+  font-size: 1.4rem;
+  margin: 0;
+  font-weight: 700;
+`;
+
+const ModalCloseButton = styled.button`
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+
+  &:hover {
+    color: #ffffff;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const FormGroup = styled.div`
+  margin-bottom: 1.25rem;
+`;
+
+const Label = styled.label`
+  display: block;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.4rem;
+`;
+
+const Input = styled.input`
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #26cccc;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+`;
+
+const DisabledInput = styled(Input)`
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+`;
+
+const StatusPreview = styled.div`
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(38, 204, 204, 0.2);
+  color: #26cccc;
+  border: 1px solid rgba(38, 204, 204, 0.3);
+`;
+
+const FormErrorText = styled.p`
+  color: #f44336;
+  font-size: 0.9rem;
+  margin: -0.5rem 0 1rem;
+`;
+
+const ModalActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+`;
+
+const SecondaryButton = styled.button`
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
   }
 `;
 
@@ -403,42 +738,65 @@ const StatusContainer = styled.div`
   }
 `;
 
-const Toggle = styled.div`
+const ToggleWrapper = styled.label`
   position: relative;
   display: inline-block;
-  width: 60px;
+  width: 64px;
   height: 32px;
+  cursor: pointer;
+  margin: 0;
+
+  &:hover > span {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
 `;
 
-const ToggleSlider = styled.div`
+const ToggleInput = styled.input`
   position: absolute;
-  cursor: pointer;
+  opacity: 0;
+  width: 0;
+  height: 0;
+`;
+
+const ToggleTrack = styled.span`
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: ${props => props.active ? colors.gradients.accent : 'linear-gradient(135deg, #f44336, #d32f2f)'};
+  background: ${props => props.$active ? colors.gradients.accent : 'linear-gradient(135deg, #f44336, #d32f2f)'};
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 32px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  
+
   &:before {
     position: absolute;
     content: "";
     height: 24px;
     width: 24px;
-    left: ${props => props.active ? '32px' : '4px'};
-    bottom: 4px;
+    left: ${props => props.$active ? '36px' : '4px'};
+    top: 4px;
     background: white;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 50%;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    z-index: 2;
   }
-  
-  &:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  }
+`;
+
+const ToggleLabel = styled.span`
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  z-index: 1;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+  ${props => props.$side === 'on' ? 'left: 8px;' : 'right: 7px;'}
+  opacity: ${props => (props.$side === 'on' ? (props.$active ? 1 : 0) : (props.$active ? 0 : 1))};
 `;
 
 const StatusBadge = styled.span`
@@ -450,7 +808,7 @@ const StatusBadge = styled.span`
   text-transform: uppercase;
   letter-spacing: 0.5px;
   backdrop-filter: blur(10px);
-  ${props => props.active ? `
+  ${props => props.$active ? `
     background: rgba(38, 204, 204, 0.2);
     color: #26cccc;
     border: 1px solid rgba(38, 204, 204, 0.3);
