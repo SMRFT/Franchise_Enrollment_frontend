@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import styled from 'styled-components';
 import axios from "axios";
 import {
@@ -15,10 +14,11 @@ const FranchiseLocations = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [formData, setFormData] = useState({ Cluster_Name: '', District: '' });
-  const [formError, setFormError] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
+  // Modal & Form States
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [clusterName, setClusterName] = useState('');
+  const [district, setDistrict] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const franchiseurl = process.env.REACT_APP_BACKEND_FRANCHISE_BASE_URL;
 
@@ -45,7 +45,7 @@ const FranchiseLocations = () => {
 
       const response = await axios(config);
 
-      if (response.status === 200) {
+      if (response.status === 200 || response.status === 201) {
         return { success: true, data: response.data };
       } else if (response.status === 400) {
         return { success: false, error: 'Invalid data sent to server.', status: 400, data: response.data };
@@ -92,6 +92,44 @@ const FranchiseLocations = () => {
     }
   };
 
+  const handleAddLocation = async (e) => {
+    e.preventDefault();
+    if (!clusterName || !district) {
+      alert('Please fill out all fields.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const newLocationData = {
+        Cluster_Name: clusterName,
+        District: district,
+        Covered_Areas: `${clusterName}`, // Default or derived string matching backend expectations
+        is_active: true
+      };
+
+      // API path points to your 'post_loaction/' endpoint setup
+      const response = await apiRequest(`${franchiseurl}post_loaction/`, 'POST', newLocationData);
+
+      if (response.success) {
+        // Option 1: Append newly created data directly to local state
+        setLocations([...locations, response.data]);
+        
+        // Reset states and close modal
+        setClusterName('');
+        setDistrict('');
+        setIsModalOpen(false);
+      } else {
+        alert(response.error || 'Failed to save location.');
+      }
+    } catch (err) {
+      console.error('Error posting location:', err);
+      alert('An unexpected error occurred while saving.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const toggleStatus = async (locationIdRaw, currentStatus) => {
     const locationId = typeof locationIdRaw === 'object' && locationIdRaw.$oid ? locationIdRaw.$oid : locationIdRaw;
 
@@ -125,77 +163,6 @@ const FranchiseLocations = () => {
     } catch (err) {
       console.error('Error updating status:', err);
       alert('An unexpected error occurred while updating status. Please try again.');
-    }
-  };
-
-  const openAddModal = () => {
-    console.log("openAddModal called!");
-    setFormData({ Cluster_Name: '', District: '' });
-    setFormError(null);
-    setShowAddModal(true);
-  };
-
-  const closeAddModal = () => {
-    console.log("closeAddModal called!");
-    if (submitting) return;
-    setShowAddModal(false);
-  };
-
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleAddLocation = async (e) => {
-    e.preventDefault();
-
-    if (!formData.Cluster_Name.trim() || !formData.District.trim()) {
-      setFormError('Cluster Name and District are required.');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      setFormError(null);
-
-      const response = await apiRequest(
-        `${franchiseurl}post_loaction/`,
-        'POST',
-        {
-          Cluster_Name: formData.Cluster_Name.trim(),
-          District: formData.District.trim(),
-          is_active: true,
-        }
-      );
-
-      if (response.success) {
-        // Backend response includes the auto-generated location_id,
-        // created_by (derived server-side from the auth token), etc.
-        if (response.data && (response.data.location_id || response.data._id)) {
-          setLocations(prev => [...prev, response.data]);
-        } else {
-          await fetchLocations();
-        }
-        setShowAddModal(false);
-      } else {
-        if (response.status === 401) {
-          setFormError('Session expired. Please log in again.');
-        } else if (response.status === 400) {
-          setFormError(
-            (response.data && (response.data.error || response.data.message)) ||
-            'Invalid data sent to server.'
-          );
-        } else if (response.networkError) {
-          setFormError('Network error. Please check your internet connection.');
-        } else {
-          setFormError(response.error || 'Failed to add location. Please try again.');
-        }
-      }
-    } catch (err) {
-      console.error('Error adding location:', err);
-      setFormError('An unexpected error occurred. Please try again.');
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -244,16 +211,17 @@ const FranchiseLocations = () => {
           <Subtitle>Manage and monitor franchise locations across districts</Subtitle>
         </Header>
 
-        <ActionBar>
-          <AddButton onClick={openAddModal}>
-            <span>+</span> Add Location
-          </AddButton>
-        </ActionBar>
+        {/* Top Control Bar containing "+ Add Location" link */}
+        <TopBarContainer>
+          <AddLocationButton onClick={() => setIsModalOpen(true)}>
+            ➕ Add Location
+          </AddLocationButton>
+        </TopBarContainer>
 
         <ModernTableContainer>
           {locations.length === 0 ? (
             <EmptyState>
-              <EmptyIcon>🏪</EmptyIcon>
+              <EmptyIcon>📁</EmptyIcon>
               <EmptyTitle>No franchise locations found</EmptyTitle>
               <EmptyText>There are currently no franchise locations to display.</EmptyText>
               <PrimaryButton onClick={fetchLocations} style={{ marginTop: '1.5rem' }}>
@@ -272,7 +240,7 @@ const FranchiseLocations = () => {
               </TableHeader>
               <TableBody>
                 {locations.map((location) => (
-                  <TableRow key={location._id}>
+                  <TableRow key={location._id?.$oid || location._id}>
                     <TableCell>
                       <FranchiseId>{location.location_id}</FranchiseId>
                     </TableCell>
@@ -306,77 +274,233 @@ const FranchiseLocations = () => {
             </Table>
           )}
         </ModernTableContainer>
-
-        {console.log("Rendering FranchiseLocations, showAddModal is:", showAddModal)}
-       {showAddModal && typeof document !== "undefined" && createPortal(
-  <ModalOverlay
-    onClick={(e) => {
-      if (e.target === e.currentTarget) {
-        closeAddModal();
-      }
-    }}
-  >
-    <ModalCard onClick={(e) => e.stopPropagation()}>
-      <ModalHeader>
-        <ModalTitle>Add Franchise Location</ModalTitle>
-        <ModalCloseButton onClick={closeAddModal} disabled={submitting}>
-          ×
-        </ModalCloseButton>
-      </ModalHeader>
-
-      <form onSubmit={handleAddLocation}>
-        <FormGroup>
-          <Label>Location ID</Label>
-          <DisabledInput type="text" value="Auto-generated on save" disabled />
-        </FormGroup>
-
-        <FormGroup>
-          <Label htmlFor="Cluster_Name">Cluster Name</Label>
-          <Input
-            id="Cluster_Name"
-            name="Cluster_Name"
-            type="text"
-            value={formData.Cluster_Name}
-            onChange={handleFormChange}
-            placeholder="e.g. Attayampatti"
-            disabled={submitting}
-          />
-        </FormGroup>
-
-        <FormGroup>
-          <Label htmlFor="District">District</Label>
-          <Input
-            id="District"
-            name="District"
-            type="text"
-            value={formData.District}
-            onChange={handleFormChange}
-            placeholder="e.g. Salem"
-            disabled={submitting}
-          />
-        </FormGroup>
-
-        {formError && <FormErrorText>{formError}</FormErrorText>}
-
-        <ModalActions>
-          <SecondaryButton type="button" onClick={closeAddModal} disabled={submitting}>
-            Cancel
-          </SecondaryButton>
-          <PrimaryButton type="submit" disabled={submitting}>
-            {submitting ? 'Saving...' : 'Save Location'}
-          </PrimaryButton>
-        </ModalActions>
-      </form>
-    </ModalCard>
-  </ModalOverlay>,
-  document.body
-)}
       </PageContainer>
+
+      {/* POPUP MODAL POPUP BACKDROP */}
+      {isModalOpen && (
+        <ModalBackdrop onClick={() => setIsModalOpen(false)}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Add Franchise Location</ModalTitle>
+              <CloseButton onClick={() => setIsModalOpen(false)}>&times;</CloseButton>
+            </ModalHeader>
+            
+            <form onSubmit={handleAddLocation}>
+              <FormGroup>
+                <Label>LOCATION ID</Label>
+                <DisabledInput 
+                  type="text" 
+                  placeholder="Auto-generated on save" 
+                  disabled 
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <Label>CLUSTER NAME</Label>
+                <Input 
+                  type="text" 
+                  placeholder="e.g. Attayampatti" 
+                  value={clusterName}
+                  onChange={(e) => setClusterName(e.target.value)}
+                  required
+                />
+              </FormGroup>
+
+              <FormGroup>
+                <Label>DISTRICT</Label>
+                <Input 
+                  type="text" 
+                  placeholder="e.g. Salem" 
+                  value={district}
+                  onChange={(e) => setDistrict(e.target.value)}
+                  required
+                />
+              </FormGroup>
+
+              <ModalActions>
+                <CancelButton type="button" onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </CancelButton>
+                <SaveButton type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? 'Saving...' : 'Save Location'}
+                </SaveButton>
+              </ModalActions>
+            </form>
+          </ModalContent>
+        </ModalBackdrop>
+      )}
     </LiquidBackground>
   );
 };
 
-// Styled Components using Global Style Theme
+// --- Styled Components ---
+
+const TopBarContainer = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+`;
+
+const AddLocationButton = styled.button`
+  background: transparent;
+  color: #26cccc;
+  border: 2px solid #26cccc;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+
+  &:hover {
+    background: #26cccc;
+    color: #0b2b30;
+    box-shadow: 0 4px 12px rgba(38, 204, 204, 0.3);
+  }
+`;
+
+// --- Modal Popup Styles (Matching the dark green/teal glassy UI mockup) ---
+
+const ModalBackdrop = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background: linear-gradient(145deg, #0f3c3a, #0b2b2a);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  width: 480px;
+  max-width: 90%;
+  padding: 2rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+`;
+
+const ModalTitle = styled.h2`
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #ffffff;
+  }
+`;
+
+const FormGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.25rem;
+`;
+
+const Label = styled.label`
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+`;
+
+const Input = styled.input`
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  color: #ffffff;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.3s;
+
+  &:focus {
+    border-color: #26cccc;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+  }
+`;
+
+const DisabledInput = styled(Input)`
+  background: rgba(0, 0, 0, 0.15);
+  border-color: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.4);
+  cursor: not-allowed;
+`;
+
+const ModalActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+`;
+
+const CancelButton = styled.button`
+  background: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+`;
+
+const SaveButton = styled.button`
+  background: linear-gradient(135deg, #26cccc, #1b9e9e);
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.9;
+  }
+
+  &:disabled {
+    background: #555555;
+    cursor: not-allowed;
+  }
+`;
+
+// Existing styles below...
 const PageContainer = styled(GlobalContainer)`
   padding: 2rem 20px;
   min-height: 100vh;
@@ -433,188 +557,6 @@ const Subtitle = styled.p`
   
   @media (max-width: 768px) {
     font-size: 1rem;
-  }
-`;
-
-const ActionBar = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 1rem;
-`;
-
-const AddButton = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  border: none;
-  border-radius: 10px;
-  background: ${colors.gradients.accent};
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-
-  span {
-    font-size: 1.2rem;
-    line-height: 1;
-  }
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
-
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  z-index: 9999;
-`;
-
-const ModalCard = styled(GradientCard)`
-  width: 100%;
-  max-width: 480px;
-  max-height: 90vh;
-  overflow-y: auto;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.5rem;
-`;
-
-const ModalTitle = styled.h2`
-  color: #ffffff;
-  font-size: 1.4rem;
-  margin: 0;
-  font-weight: 700;
-`;
-
-const ModalCloseButton = styled.button`
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 1.75rem;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0;
-
-  &:hover {
-    color: #ffffff;
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: 1.25rem;
-`;
-
-const Label = styled.label`
-  display: block;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 0.4rem;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-  font-size: 0.95rem;
-  box-sizing: border-box;
-
-  &::placeholder {
-    color: rgba(255, 255, 255, 0.4);
-  }
-
-  &:focus {
-    outline: none;
-    border-color: #26cccc;
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
-
-const DisabledInput = styled(Input)`
-  color: rgba(255, 255, 255, 0.5);
-  font-style: italic;
-`;
-
-const StatusPreview = styled.div`
-  display: inline-block;
-  padding: 0.4rem 0.8rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: rgba(38, 204, 204, 0.2);
-  color: #26cccc;
-  border: 1px solid rgba(38, 204, 204, 0.3);
-`;
-
-const FormErrorText = styled.p`
-  color: #f44336;
-  font-size: 0.9rem;
-  margin: -0.5rem 0 1rem;
-`;
-
-const ModalActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-`;
-
-const SecondaryButton = styled.button`
-  padding: 0.75rem 1.25rem;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: transparent;
-  color: #ffffff;
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.25s ease;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
   }
 `;
 

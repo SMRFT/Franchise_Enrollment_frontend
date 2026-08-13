@@ -154,6 +154,7 @@ export const LiquidBackground = styled.div`
     height: 200%;
     background: radial-gradient(circle, rgba(72, 209, 204, 0.2) 0%, transparent 50%);
     animation: float 20s ease-in-out infinite;
+    pointer-events: none;
   }
   
   &::after {
@@ -165,6 +166,7 @@ export const LiquidBackground = styled.div`
     height: 150%;
     background: radial-gradient(circle, rgba(0, 160, 160, 0.15) 0%, transparent 50%);
     animation: float 25s ease-in-out infinite reverse;
+    pointer-events: none;
   }
   
   @keyframes float {
